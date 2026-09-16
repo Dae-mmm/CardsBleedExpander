@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
-
-const FEEDBACK_TO_EMAIL =
-  process.env.FEEDBACK_TO_EMAIL ?? "di.mammoli.design+feedback@gmail.com";
+import {
+  FeedbackEmailNotConfiguredError,
+  sendFeedbackEmail,
+} from "../../lib/send-feedback-email";
 
 const MAX_NAME = 120;
 const MAX_EMAIL = 200;
 const MAX_MESSAGE = 5000;
 const MIN_MESSAGE = 8;
+
+export const runtime = "nodejs";
 
 type FeedbackType = "feedback" | "issue";
 
@@ -60,39 +63,19 @@ export async function POST(request: Request) {
     );
   }
 
-  const payload = {
-    name: name || "Anonymous",
-    email: email || "not-provided@example.com",
-    _replyto: email || undefined,
-    type,
-    message,
-    _subject: `[Cards Bleed Expander] ${type === "issue" ? "Issue" : "Feedback"}`,
-    _template: "table",
-    _captcha: "false",
-  };
-
   try {
-    const response = await fetch(
-      `https://formsubmit.co/ajax/${encodeURIComponent(FEEDBACK_TO_EMAIL)}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(payload),
-      },
-    );
-
-    if (!response.ok) {
-      const details = await response.text();
-      console.error("Feedback email provider error:", response.status, details);
+    await sendFeedbackEmail({ name, email, type, message });
+  } catch (error) {
+    if (error instanceof FeedbackEmailNotConfiguredError) {
+      console.error(
+        "Feedback email is not configured. Set RESEND_API_KEY or FEEDBACK_SMTP_USER / FEEDBACK_SMTP_PASS.",
+      );
       return NextResponse.json(
         { error: "Could not send the message. Please try again later." },
-        { status: 502 },
+        { status: 503 },
       );
     }
-  } catch (error) {
+
     console.error("Feedback email send failed:", error);
     return NextResponse.json(
       { error: "Could not send the message. Please try again later." },

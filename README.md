@@ -34,3 +34,12 @@ You can check out [the Next.js GitHub repository](https://github.com/vercel/next
 The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+
+## Feedback form
+
+The floating **feedbacks/issues report** button posts to `/api/feedback`. The destination address stays on the server and is not shown in the UI.
+
+To deliver mail, set one of these in Vercel project env vars (see `.env.example`):
+
+- `RESEND_API_KEY` (recommended), or
+- `FEEDBACK_SMTP_USER` and `FEEDBACK_SMTP_PASS` (Gmail app password)
