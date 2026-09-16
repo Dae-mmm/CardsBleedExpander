@@ -163,7 +163,8 @@ export function CardImporter() {
           </h1>
           <p className="max-w-2xl text-sm text-zinc-600">
             Incolla una lista, scarica le carte da Scryfall (Magic), Pokémon TCG
-            API e YGOPRODeck (Yu-Gi-Oh!), poi aggiungi il bleed per la stampa.
+            API / TCGdex e YGOPRODeck (Yu-Gi-Oh!), poi aggiungi il bleed per la
+            stampa.
           </p>
         </div>
       </header>

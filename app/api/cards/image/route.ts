@@ -4,6 +4,8 @@ const ALLOWED_HOSTS = new Set([
   "cards.scryfall.io",
   "c1.scryfall.com",
   "images.pokemontcg.io",
+  "images.scrydex.com",
+  "assets.tcgdex.net",
   "images.ygoprodeck.com",
 ]);
 

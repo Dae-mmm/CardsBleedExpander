@@ -154,14 +154,64 @@ type PokemonCard = {
   tcgplayer?: { url?: string };
 };
 
+type TcgdexCard = {
+  id: string;
+  name: string;
+  image?: string;
+  set?: { name?: string };
+  localId?: string;
+};
+
+function pickPokemonMatch(cards: PokemonCard[], wanted: string) {
+  const exact = cards.find(
+    (card) => card.name.toLowerCase() === wanted.toLowerCase(),
+  );
+  return exact || cards[0];
+}
+
+async function resolvePokemonFromTcgdex(
+  card: CardQuery,
+): Promise<ResolvedCard | null> {
+  const url = new URL("https://api.tcgdex.net/v2/en/cards");
+  url.searchParams.set("name", card.name);
+  const response = await apiFetch(url.toString());
+  if (!response.ok) return null;
+  const data = (await response.json()) as TcgdexCard[];
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const exact = data.filter(
+    (item) => item.name.toLowerCase() === card.name.toLowerCase(),
+  );
+  const match =
+    exact.find((item) => item.image) ||
+    data.find((item) => item.image) ||
+    exact[0] ||
+    data[0];
+  const imageBase = match.image;
+  if (!imageBase) return null;
+  return {
+    query: card.name,
+    quantity: card.quantity,
+    name: match.name,
+    setName: match.set?.name,
+    collectorNumber: match.localId,
+    imageUrl: `${imageBase}/high.png`,
+    source: "pokemon",
+    sourceUrl: `https://www.tcgdex.net/card/${match.id}`,
+    found: true,
+  };
+}
+
 async function resolvePokemon(cards: CardQuery[]): Promise<ResolvedCard[]> {
   const resolved: ResolvedCard[] = [];
   for (const [index, card] of cards.entries()) {
-    if (index > 0) await sleep(120);
+    if (index > 0) await sleep(150);
+
     const query = new URL(POKEMON);
-    const nameQuery = `name:"${card.name.replaceAll('"', "")}"`;
-    query.searchParams.set("q", nameQuery);
-    query.searchParams.set("pageSize", "1");
+    query.searchParams.set(
+      "q",
+      `name:"${card.name.replaceAll('"', "")}"`,
+    );
+    query.searchParams.set("pageSize", "20");
     query.searchParams.set("orderBy", "-set.releaseDate");
 
     const headers: HeadersInit = {};
@@ -169,39 +219,30 @@ async function resolvePokemon(cards: CardQuery[]): Promise<ResolvedCard[]> {
       headers["X-Api-Key"] = process.env.POKEMONTCG_API_KEY;
     }
 
-    let response = await apiFetch(query.toString(), { headers });
-    if (!response.ok) {
-      resolved.push(emptyResult(card, "pokemon"));
-      continue;
-    }
-    let payload = (await response.json()) as { data?: PokemonCard[] };
-    if (!payload.data?.length) {
-      const fallback = new URL(POKEMON);
-      fallback.searchParams.set("q", `name:${card.name.replaceAll('"', "")}*`);
-      fallback.searchParams.set("pageSize", "1");
-      fallback.searchParams.set("orderBy", "-set.releaseDate");
-      response = await apiFetch(fallback.toString(), { headers });
-      payload = response.ok
-        ? ((await response.json()) as { data?: PokemonCard[] })
-        : { data: [] };
+    let match: PokemonCard | undefined;
+    const response = await apiFetch(query.toString(), { headers });
+    if (response.ok) {
+      const payload = (await response.json()) as { data?: PokemonCard[] };
+      match = pickPokemonMatch(payload.data ?? [], card.name);
     }
 
-    const match = payload.data?.[0];
-    if (!match?.images?.large && !match?.images?.small) {
-      resolved.push(emptyResult(card, "pokemon"));
+    if (match?.images?.large || match?.images?.small) {
+      resolved.push({
+        query: card.name,
+        quantity: card.quantity,
+        name: match.name,
+        setName: match.set?.name,
+        collectorNumber: match.number,
+        imageUrl: match.images.large || match.images.small || null,
+        source: "pokemon",
+        sourceUrl: match.tcgplayer?.url,
+        found: true,
+      });
       continue;
     }
-    resolved.push({
-      query: card.name,
-      quantity: card.quantity,
-      name: match.name,
-      setName: match.set?.name,
-      collectorNumber: match.number,
-      imageUrl: match.images.large || match.images.small || null,
-      source: "pokemon",
-      sourceUrl: match.tcgplayer?.url,
-      found: true,
-    });
+
+    const fallback = await resolvePokemonFromTcgdex(card);
+    resolved.push(fallback ?? emptyResult(card, "pokemon"));
   }
   return resolved;
 }
