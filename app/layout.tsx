@@ -16,13 +16,14 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Cards Bleed Expander",
-  description: "Expand card bleed for print-ready artwork.",
+  description:
+    "Importa una lista di carte da Magic, Pokémon o Yu-Gi-Oh! e scarica le immagini con bleed per la stampa.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
-      lang="en"
+      lang="it"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col">
